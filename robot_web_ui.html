@@ -1,0 +1,633 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Dofbot Robot Controller</title>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;700;800&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0a0f;
+      --surface: #111118;
+      --border: #1e1e2e;
+      --accent: #00e5ff;
+      --accent2: #7c3aed;
+      --green: #00ff88;
+      --red: #ff3860;
+      --text: #e2e8f0;
+      --muted: #4a5568;
+      --font-mono: 'Space Mono', monospace;
+      --font-display: 'Syne', sans-serif;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: var(--font-mono);
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+      background-image: radial-gradient(ellipse at 20% 50%, rgba(0,229,255,0.03) 0%, transparent 60%),
+                        radial-gradient(ellipse at 80% 20%, rgba(124,58,237,0.05) 0%, transparent 60%);
+    }
+
+    .container { width: 100%; max-width: 760px; }
+
+    header {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      margin-bottom: 2rem;
+      padding-bottom: 1.5rem;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .logo-ring {
+      width: 48px; height: 48px;
+      border: 2px solid var(--accent);
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      position: relative;
+      animation: pulse-ring 3s ease-in-out infinite;
+    }
+    .logo-ring::after {
+      content: '';
+      width: 8px; height: 8px;
+      background: var(--accent);
+      border-radius: 50%;
+    }
+    @keyframes pulse-ring {
+      0%, 100% { box-shadow: 0 0 0 0 rgba(0,229,255,0.3); }
+      50% { box-shadow: 0 0 0 8px rgba(0,229,255,0); }
+    }
+
+    .header-text h1 {
+      font-family: var(--font-display);
+      font-size: 1.5rem;
+      font-weight: 800;
+      color: #fff;
+      letter-spacing: -0.02em;
+    }
+    .header-text p {
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-top: 2px;
+    }
+
+    .status-row {
+      display: flex;
+      gap: 0.75rem;
+      margin-bottom: 1.5rem;
+      flex-wrap: wrap;
+    }
+
+    .status-pill {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      padding: 0.3rem 0.75rem;
+      font-size: 0.7rem;
+      color: var(--muted);
+      letter-spacing: 0.05em;
+    }
+    .dot { width: 6px; height: 6px; border-radius: 50%; background: var(--muted); }
+    .dot.on { background: var(--green); box-shadow: 0 0 6px var(--green); animation: blink 2s ease-in-out infinite; }
+    .dot.off { background: var(--red); }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+    .config-panel {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.25rem;
+      margin-bottom: 1.5rem;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 0.75rem;
+    }
+
+    .config-panel label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .config-panel input {
+      width: 100%;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 0.5rem 0.75rem;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .config-panel input:focus { border-color: var(--accent); }
+
+    .commands-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+      gap: 0.5rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .cmd-btn {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      padding: 0.6rem 0.75rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      text-align: left;
+    }
+    .cmd-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .cmd-btn:active { transform: scale(0.97); }
+    .cmd-btn .cmd-name { font-weight: 700; display: block; }
+    .cmd-btn .cmd-desc { color: var(--muted); font-size: 0.65rem; margin-top: 2px; display: block; }
+
+    .chat-box {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      overflow: hidden;
+      margin-bottom: 1rem;
+    }
+
+    .chat-header {
+      padding: 0.75rem 1rem;
+      border-bottom: 1px solid var(--border);
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .chat-messages {
+      height: 320px;
+      overflow-y: auto;
+      padding: 1rem;
+      display: flex;
+      flex-direction: column;
+      gap: 0.75rem;
+    }
+
+    .chat-messages::-webkit-scrollbar { width: 4px; }
+    .chat-messages::-webkit-scrollbar-track { background: transparent; }
+    .chat-messages::-webkit-scrollbar-thumb { background: var(--border); border-radius: 2px; }
+
+    .msg {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      animation: fadein 0.2s ease;
+    }
+    @keyframes fadein { from { opacity:0; transform: translateY(4px); } to { opacity:1; transform: none; } }
+
+    .msg.user { align-items: flex-end; }
+    .msg.bot  { align-items: flex-start; }
+
+    .msg-bubble {
+      max-width: 80%;
+      padding: 0.5rem 0.875rem;
+      border-radius: 10px;
+      font-size: 0.8rem;
+      line-height: 1.5;
+    }
+    .msg.user .msg-bubble {
+      background: var(--accent2);
+      color: #fff;
+      border-bottom-right-radius: 3px;
+    }
+    .msg.bot .msg-bubble {
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      border-bottom-left-radius: 3px;
+    }
+    .msg.bot.success .msg-bubble { border-color: var(--green); color: var(--green); }
+    .msg.bot.error .msg-bubble { border-color: var(--red); color: var(--red); }
+
+    .msg-time {
+      font-size: 0.6rem;
+      color: var(--muted);
+      padding: 0 0.25rem;
+    }
+
+    .typing {
+      display: flex;
+      gap: 4px;
+      padding: 0.5rem 0.875rem;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      border-bottom-left-radius: 3px;
+      width: fit-content;
+    }
+    .typing span {
+      width: 5px; height: 5px;
+      background: var(--muted);
+      border-radius: 50%;
+      animation: bounce 1s ease-in-out infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.15s; }
+    .typing span:nth-child(3) { animation-delay: 0.3s; }
+    @keyframes bounce { 0%,60%,100%{transform:translateY(0)} 30%{transform:translateY(-5px)} }
+
+    .chat-input-row {
+      display: flex;
+      gap: 0.5rem;
+      padding: 0.75rem;
+      border-top: 1px solid var(--border);
+    }
+
+    #user-input {
+      flex: 1;
+      background: var(--bg);
+      border: 1px solid var(--border);
+      color: var(--text);
+      font-family: var(--font-mono);
+      font-size: 0.8rem;
+      padding: 0.6rem 0.875rem;
+      border-radius: 8px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    #user-input:focus { border-color: var(--accent); }
+    #user-input::placeholder { color: var(--muted); }
+
+    #send-btn {
+      background: var(--accent);
+      border: none;
+      color: #000;
+      font-family: var(--font-mono);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 0.6rem 1.25rem;
+      border-radius: 8px;
+      cursor: pointer;
+      transition: all 0.15s;
+      letter-spacing: 0.05em;
+    }
+    #send-btn:hover { background: #33eeff; }
+    #send-btn:active { transform: scale(0.97); }
+    #send-btn:disabled { opacity: 0.4; cursor: default; }
+
+    .section-label {
+      font-size: 0.65rem;
+      color: var(--muted);
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      margin-bottom: 0.6rem;
+    }
+  
+    .save-dialog { background: #111118; border: 1px solid #7c3aed; border-radius: 10px; padding: 14px; margin-top: 10px; display: none; }
+    .save-dialog.show { display: block; }
+    .save-dialog-title { font-size: 0.68rem; letter-spacing: 2px; text-transform: uppercase; color: #7c3aed; margin-bottom: 6px; }
+    .save-dialog-desc { font-size: 0.65rem; color: #4a5568; margin-bottom: 10px; }
+    .save-row { display: flex; gap: 8px; }
+    #save-name-input { flex: 1; background: #0a0a0f; border: 1px solid #1e1e2e; border-radius: 6px; padding: 8px 12px; color: #e2e8f0; font-family: monospace; font-size: 0.75rem; outline: none; }
+    .save-btn { background: #7c3aed; color: #fff; border: none; border-radius: 6px; padding: 8px 16px; font-family: monospace; font-size: 0.72rem; font-weight: 700; cursor: pointer; }
+    .dismiss-btn { background: none; border: 1px solid #1e1e2e; color: #4a5568; border-radius: 6px; padding: 8px 12px; font-family: monospace; font-size: 0.72rem; cursor: pointer; }
+</style>
+</head>
+<body>
+<div class="container">
+
+  <header>
+    <div class="logo-ring"></div>
+    <div class="header-text">
+      <h1>Dofbot Controller</h1>
+      <p>AI-powered robot arm — Groq + Raspberry Pi</p>
+    </div>
+  </header>
+
+  <div class="status-row">
+    <div class="status-pill"><div class="dot" id="dot-api"></div><span id="txt-api">Pi API — checking...</span></div>
+    <div class="status-pill"><div class="dot" id="dot-groq"></div><span id="txt-groq">Groq — checking...</span></div>
+    <div class="status-pill"><div class="dot on"></div><span id="txt-cmds">Commands — 0 loaded</span></div>
+  </div>
+
+  <div class="config-panel">
+    <div>
+      <label>Pi API URL</label>
+      <input type="text" id="pi-url" value="http://192.168.50.147:5000"/>
+    </div>
+    <div>
+      <label>Groq API Key</label>
+      <input type="password" id="groq-key" placeholder="gsk_..."/>
+    </div>
+  </div>
+
+  <div class="section-label">Quick commands</div>
+  <div class="commands-grid" id="commands-grid">
+    <div style="color:var(--muted);font-size:0.75rem">Loading commands...</div>
+  </div>
+
+
+    
+  <div class="section-label">⚡ AI Robot Control (Groq)</div>
+  <div style="background:#111118;border:1px solid #7c3aed;border-radius:10px;padding:20px;margin-bottom:1.5rem;">
+    <div style="font-size:0.65rem;color:#7c3aed;letter-spacing:2px;text-transform:uppercase;margin-bottom:8px;">⚡ Smart Movement Library</div>
+    <p style="font-size:0.7rem;color:#4a5568;margin-bottom:12px;line-height:1.6;">Type any instruction in plain English. Groq picks from your verified movements and chains them together.<br>
+    Examples: "look left then right" · "pick up and put it to the left" · "say yes" · "celebrate"</p>
+    <div style="display:flex;gap:8px;">
+      <input type="text" id="ai-instruction" placeholder='e.g. "pick up and put left" or "look around"'
+        style="flex:1;background:#0a0a0f;border:1px solid #1e1e2e;border-radius:6px;padding:10px 14px;color:#e2e8f0;font-family:monospace;font-size:0.82rem;outline:none;" />
+      <button id="ai-btn" onclick="sendAIGenerate()"
+        style="background:#7c3aed;color:#fff;border:none;border-radius:6px;padding:10px 18px;font-family:monospace;font-size:0.78rem;font-weight:700;cursor:pointer;white-space:nowrap;">
+        ⚡ Run
+      </button>
+    </div>
+  </div>
+<div class="save-dialog" id="save-dialog">
+      <div class="save-dialog-title">💾 Save this command?</div>
+      <div class="save-dialog-desc" id="save-dialog-desc">Give it a name to save as a quick command button.</div>
+      <div class="save-row">
+        <input type="text" id="save-name-input" placeholder='e.g. "pickup and put left"' />
+        <button class="save-btn" onclick="saveCommand()">Save</button>
+        <button class="dismiss-btn" onclick="dismissSave()">Skip</button>
+      </div>
+    </div>
+  <div class="chat-box">
+    <div class="chat-header">
+      <span>Chat with your robot</span>
+      <span id="model-label" style="color:var(--accent)">llama-3.1-8b-instant</span>
+    </div>
+    <div class="chat-messages" id="chat-messages">
+      <div class="msg bot">
+        <div class="msg-bubble">Hey! I'm your robot controller. Tell me what to do — try "wave hello", "dance", or "do something fun"!</div>
+        <div class="msg-time">now</div>
+      </div>
+    </div>
+    <div class="chat-input-row">
+      <input type="text" id="user-input" placeholder="Tell the robot what to do..." />
+      <button id="send-btn" onclick="sendMessage()">Send</button>
+    </div>
+  </div>
+
+</div>
+
+<script>
+  const GROQ_MODEL = 'llama-3.1-8b-instant';
+  let commands = [];
+
+  function piUrl() { return document.getElementById('pi-url').value.replace(/\/$/, ''); }
+  function groqKey() { return document.getElementById('groq-key').value.trim(); }
+
+  function time() {
+    return new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  }
+
+  function addMsg(text, type = 'bot', status = '') {
+    const box = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = `msg ${type} ${status}`;
+    div.innerHTML = `<div class="msg-bubble">${text}</div><div class="msg-time">${time()}</div>`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+    return div;
+  }
+
+  function showTyping() {
+    const box = document.getElementById('chat-messages');
+    const div = document.createElement('div');
+    div.className = 'msg bot';
+    div.id = 'typing-indicator';
+    div.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function removeTyping() {
+    const t = document.getElementById('typing-indicator');
+    if (t) t.remove();
+  }
+
+  async function checkStatus() {
+    try {
+      const res = await fetch(`${piUrl()}/status`);
+      const data = await res.json();
+      document.getElementById('dot-api').className = 'dot on';
+      document.getElementById('txt-api').textContent = 'Pi API — online';
+      document.getElementById('txt-cmds').textContent = `Commands — ${data.commands_loaded} loaded`;
+      loadCommands();
+    } catch(e) {
+      document.getElementById('dot-api').className = 'dot off';
+      document.getElementById('txt-api').textContent = 'Pi API — offline';
+    }
+
+    if (groqKey()) {
+      document.getElementById('dot-groq').className = 'dot on';
+      document.getElementById('txt-groq').textContent = 'Groq — ready';
+    }
+  }
+
+  async function loadCommands() {
+    try {
+      const res = await fetch(`${piUrl()}/commands`);
+      const data = await res.json();
+      commands = data.commands;
+      const grid = document.getElementById('commands-grid');
+      grid.innerHTML = commands.map(c => `
+        <button class="cmd-btn" onclick="quickCommand('${c.command}')">
+          <span class="cmd-name">${c.command}</span>
+          <span class="cmd-desc">${c.description || ''}</span>
+        </button>
+      `).join('');
+    } catch(e) {}
+  }
+
+  function quickCommand(cmd) {
+    document.getElementById('user-input').value = cmd;
+    sendMessage();
+  }
+
+  async function askGroq(userInput) {
+    const cmdList = commands.map(c => `- ${c.command}: ${c.description}`).join('\n');
+    const prompt = `You control a robot arm. Available commands:\n${cmdList}\n\nUser says: '${userInput}'\nReply with ONLY the exact command name. Nothing else.`;
+
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${groqKey()}`
+      },
+      body: JSON.stringify({
+        model: GROQ_MODEL,
+        messages: [{ role: 'user', content: prompt }],
+        max_tokens: 20
+      })
+    });
+    const data = await res.json();
+    return data.choices[0].message.content.trim().toLowerCase();
+  }
+
+  async function runCommand(cmd) {
+    const res = await fetch(`${piUrl()}/run`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ command: cmd })
+    });
+    return await res.json();
+  }
+
+  async function sendMessage() {
+    const input = document.getElementById('user-input');
+    const btn = document.getElementById('send-btn');
+    const text = input.value.trim();
+    if (!text) return;
+
+    if (!groqKey()) {
+      addMsg('Please enter your Groq API key above first!', 'bot', 'error');
+      return;
+    }
+
+    addMsg(text, 'user');
+    input.value = '';
+    btn.disabled = true;
+    showTyping();
+
+    try {
+      const command = await askGroq(text);
+      removeTyping();
+
+      const validCommands = commands.map(c => c.command);
+      if (!validCommands.includes(command)) {
+        addMsg(`I understood you but couldn't map that to a robot command. Try: ${validCommands.join(', ')}`, 'bot', 'error');
+        btn.disabled = false;
+        return;
+      }
+
+      addMsg(`Running <strong>${command}</strong>...`, 'bot');
+      const result = await runCommand(command);
+
+      if (result.status === 'success') {
+        addMsg(`Done! Robot executed <strong>${command}</strong> successfully.`, 'bot', 'success');
+      } else {
+        addMsg(`Error: ${result.error}`, 'bot', 'error');
+      }
+    } catch(e) {
+      removeTyping();
+      addMsg(`Connection error: ${e.message}`, 'bot', 'error');
+    }
+
+    btn.disabled = false;
+    input.focus();
+  }
+
+  document.getElementById('user-input').addEventListener('keydown', e => {
+    if (e.key === 'Enter') sendMessage();
+  });
+
+  document.getElementById('pi-url').addEventListener('change', checkStatus);
+  document.getElementById('groq-key').addEventListener('input', () => {
+    if (groqKey()) {
+      document.getElementById('dot-groq').className = 'dot on';
+      document.getElementById('txt-groq').textContent = 'Groq — ready';
+    }
+  });
+
+  checkStatus();
+  setInterval(checkStatus, 10000);
+
+  let pendingSave = null;
+
+  function showSaveDialog(instruction, movements) {
+    pendingSave = { instruction, movements };
+    document.getElementById('save-dialog-desc').textContent = 'Movements: ' + movements.join(' → ');
+    document.getElementById('save-name-input').value = instruction;
+    document.getElementById('save-dialog').classList.add('show');
+    document.getElementById('save-name-input').focus();
+    document.getElementById('save-name-input').select();
+  }
+
+  function dismissSave() {
+    document.getElementById('save-dialog').classList.remove('show');
+    pendingSave = null;
+  }
+
+  async function saveCommand() {
+    if (!pendingSave) return;
+    const name = document.getElementById('save-name-input').value.trim();
+    if (!name) return;
+    try {
+      const res = await fetch(piUrl() + '/save_command', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ command: name, movements: pendingSave.movements, description: pendingSave.instruction })
+      });
+      const data = await res.json();
+      if (data.success) {
+        addMsg('💾 Saved "<strong>' + name + '</strong>" as a script — type it anytime to run it!', 'bot', 'success');
+        dismissSave();
+      } else {
+        addMsg('Failed to save: ' + data.message, 'bot', 'error');
+      }
+    } catch(e) {
+      addMsg('Save error: ' + e.message, 'bot', 'error');
+    }
+  }
+
+  document.addEventListener('keydown', function(e) {
+    if (document.getElementById('save-dialog').classList.contains('show')) {
+      if (e.key === 'Escape') dismissSave();
+    }
+  });
+
+  async function sendAIGenerate() {
+    const input = document.getElementById('ai-instruction');
+    const btn = document.getElementById('ai-btn');
+    const instruction = input.value.trim();
+    if (!instruction) return;
+
+    btn.disabled = true;
+    btn.textContent = '⏳ Running...';
+    addMsg('⚡ Running: "<em>' + instruction + '</em>"', 'bot');
+
+    try {
+      const res = await fetch(piUrl() + '/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ instruction: instruction, groq_key: groqKey() })
+      });
+      const data = await res.json();
+
+      if (data.success) {
+        const mvs = data.movements_executed || [];
+        addMsg('✓ Done! Movements: <strong>' + mvs.join(' → ') + '</strong>', 'bot', 'success');
+        showSaveDialog(instruction, mvs);
+      } else {
+        addMsg('✗ Failed: ' + data.message, 'bot', 'error');
+      }
+    } catch(e) {
+      addMsg('Connection error: ' + e.message, 'bot', 'error');
+    }
+
+    btn.disabled = false;
+    btn.textContent = '⚡ Run';
+    input.value = '';
+    input.focus();
+  }
+</script>
+</body>
+</html>
