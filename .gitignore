@@ -1,0 +1,7 @@
+﻿*.db
+*.sqlite
+generated_scripts/
+__pycache__/
+*.pyc
+.env
+.DS_Store
